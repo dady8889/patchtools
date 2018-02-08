@@ -2,8 +2,11 @@
 # Copyright (C) 2017 dady8889@github
 # Utility made for patching git repositories
 
-# Change/remove the default ROM below
-DEFAULT="du"
+# The default ROM is saved in "defaultrom" file
+DIRNAME=`dirname $0`
+DEFAULT=`cat $DIRNAME/defaultrom`
+
+echo $DEFAULT
 
 function necho() {
 	echo ""
@@ -24,14 +27,15 @@ function helpcommand() {
 	echo "You can use the bundled git-makepatch for automatic creation of patches."
 	echo ""
 	echo "Available operations:"
-	echo "-p, --patch [ROM]    use 'patch' for every .patch file inside [ROM] directory"
-	echo "-a, --apply [ROM]    use 'git apply' for every .apply file inside [ROM] directory"
-	echo "-c, --clear          revert all applied patches in respective repositories"
-	echo "(if you want to patch *.patch and *.apply at once, use -ap [ROM])"
+	echo "-p,  --patch [ROM]         use 'patch' for every .patch file inside [ROM] directory"
+	echo "-a,  --apply [ROM]         use 'git apply' for every .apply file inside [ROM] directory"
+	echo "                          (if you want to patch *.patch and *.apply at once, use -ap [ROM])"
+	echo "-c,  --clear               revert all applied patches in respective repositories"
+	echo "-sd, --set-default [ROM]   set the default ROM to use"
 	echo ""
 	echo "Optional arguments:"
-	echo "-V, --verbose        print errors, other messages"
-	echo "-D, --dry-run        do not actually make changes, generate random errors if --apply specified"
+	echo "-V, --verbose              print errors, other messages"
+	echo "-D, --dry-run              do not actually make changes, generate random errors if --apply specified"
 }
 
 function finishcommand() {
@@ -51,11 +55,17 @@ function finishcommand() {
 	necho
 }
 
+function setdefaultrom() {
+	local ROM=$1
+	echo $ROM > "$DIRNAME/defaultrom"
+	echo -e "${BI_YELLOW}Default rom set to $ROM${NC}"
+}
+
 function checkrom() {
 	local ROM=$1
 
 	if [[ -z $ROM && -z $DEFAULT ]]; then
-		echo -e "${RED}You must specify ROM when patching.${NC}"
+		echo -e "${RED}No default ROM is set! Use parameter --set-default.${NC}"
 		exit 1
 	elif [[ -z $ROM ]]; then
 		echo -e "${BLUE}No ROM specified, using the default '$DEFAULT'${NC}"
@@ -403,6 +413,11 @@ do
 		fi
 		clearpatchescommand
 		finishcommand
+		shift
+		;;
+		-sd|--set-default)
+		ACTION=true
+		setdefaultrom $2
 		shift
 		;;
 		-h|--help)
