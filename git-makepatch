@@ -10,11 +10,14 @@ function helpcommand() {
     echo "Usage: git-makepatch -n [NUMBER] [FILENAME]"
     echo "Utility for generating git patch files"
     echo ""
-    echo "This utility saves the patch as FILENAME.patch on your desktop"
+    echo "This utility saves the patch as FILENAME.patch into your desktop"
     echo ""
     echo "Optional arguments:"
     echo "-n, --number   specifies number of commits to include in the patch"
-    echo "-d, --diff     uses 'git diff' to make patch without commit"
+    echo "-d, --diff     uses 'git diff' to make patch without any commit"
+    echo ""
+    echo "Operations:"
+    echo "-c, --clear    reverts [NUMBER (Defaults 1)] commits"
 }
 
 function createpatch() {
@@ -48,24 +51,55 @@ function createpatch() {
     fi
 }
 
-NC='\033[0m' # No Color
-RED='\033[0;91m'
-BLUE='\033[0;94m'
-YELLOW='\033[0;93m'
-GREEN='\033[0;92m'
+function clearrepo() {
+    if [[ ! -n $NUMBER ]] ; then
+       NUMBER=1
+    fi
+
+    GITLOG_OLD=$(git log --no-color --oneline -1)
+    GITLOG_NEW=$(git log --no-color --oneline -1 --skip $NUMBER)
+    question="Go from HEAD: ${YELLOW}$GITLOG_OLD${NC} to HEAD~$NUMBER: ${YELLOW}$GITLOG_NEW${NC}? [y/n] "
+
+    while true; do
+        read -p "$question" yn
+        case "$yn" in
+            [Yy]*)
+                output=$(git reset --hard HEAD~$NUMBER)
+                break
+                ;;
+            [Nn]*)
+                echo "Exitting..."
+                exit 1
+                ;;
+            *)
+                printf %s\\n "Please answer yes or no."
+        esac
+    done
+    echo ""
+}
+
+NC=$'\033[0m' # No Color
+RED=$'\033[0;91m'
+BLUE=$'\033[0;94m'
+YELLOW=$'\033[0;93m'
+GREEN=$'\033[0;92m'
 
 while [[ $# -gt 0 ]]
 do
     arg="$1"
     case $arg in
-        -d|--diff)
-        USEDIFF=true
-        ;;
         -n|--number)
         NUMBER=$2
         shift
         ;;
-        --help)
+        -c|--clear)
+        clearrepo
+        exit 1
+        ;;
+        -d|--diff)
+        USEDIFF=true
+        ;;
+        -h|--help)
         ACTION=true
         helpcommand
         ;;
