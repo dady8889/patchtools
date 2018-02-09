@@ -6,8 +6,6 @@
 DIRNAME=`dirname $0`
 DEFAULT=`cat $DIRNAME/defaultrom`
 
-echo $DEFAULT
-
 function necho() {
 	echo ""
 }
@@ -100,18 +98,26 @@ function notifyfixme() {
 function clearpatchescommand() {
 	local LINENUM=0
 
-	for LINE in $(echo $(find -L -name *.patch); echo $(find -L -name *.apply))
+	for LINE in $(echo $(find -L -path *$DEFAULT*.patch -or -path *common*.patch -or -path *$DEFAULT*.apply -or -path *common*.apply))
 	do
 		LINENUM=$(($LINENUM+1))
+		DIRNAME=$(dirname $LINE)
 
-		REPO=$(dirname $LINE | cut -d '/' -f3-)
+		REPO=$(echo $DIRNAME | cut -d '/' -f3-)
 
 		if [[ -n "$INPUTREPO" ]]; then
 			REPO="$INPUTREPO"
 		fi
 
 		if [[ $(echo $CLEARED | grep -c "$REPO") -gt 0 ]]; then
+			if [[ $MESSAGE == true ]]; then
+				echo -e "Current directory: $DIRNAME -> Skipping"
+			fi
 			continue
+		else
+			if [[ $MESSAGE == true ]]; then
+				echo -e "Current directory: $DIRNAME"
+			fi			
 		fi
 
 		echo -ne "${BLUE}Clearing repository${NC}"
@@ -129,12 +135,21 @@ function clearpatchescommand() {
 
 		cd "$REPO"
 		if [[ $DRYRUN == false ]]; then
-			git add . > /dev/null
-			git stash > /dev/null
-			find -name "*.orig" | while read LINE; do rm "$LINE"; done
-			find -name "*.rej" | while read LINE; do rm "$LINE"; done
-			git clean -f > /dev/null
-			git stash clear > /dev/null
+			if [[ $MESSAGE == true ]]; then
+				git add .
+				git stash
+				find -name "*.orig" | while read LINE; do rm "$LINE"; done
+				find -name "*.rej" | while read LINE; do rm "$LINE"; done
+				git clean -f
+				git stash clear				
+			else
+				git add . > /dev/null
+				git stash > /dev/null
+				find -name "*.orig" | while read LINE; do rm "$LINE"; done
+				find -name "*.rej" | while read LINE; do rm "$LINE"; done
+				git clean -f > /dev/null
+				git stash clear > /dev/null			
+			fi
 		fi
 		CLEARED="$CLEARED|$REPO|"
 		cd "$THISDIR"
@@ -167,7 +182,7 @@ function patchcommand() {
 
 	necho
 	echo -e "${BI_MAGENTA}Entering directory $ROM${NC}"
-	cd "$ROM"
+	cd "$ROM" # CD-ROM (plz halp)
 	for LINE in $(find -L -name '*.patch' -or -name '*.patch.fixme' | cut -c 3- | sort)
 	do
 
@@ -407,6 +422,7 @@ do
 		INPUTREPO=$2
 		necho
 		if [[ -z "$INPUTREPO" ]]; then
+			echo -e "${BI_BLUE}Clearing $DEFAULT and common${NC}"
 			echo -e "${BI_YELLOW}Finding patched repositories...${NC}"
 		else
 			echo -e "${BI_YELLOW}Finding specific repository...${NC}"
